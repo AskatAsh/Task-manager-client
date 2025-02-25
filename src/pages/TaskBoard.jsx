@@ -7,11 +7,11 @@ import { useNavigate } from "react-router-dom";
 const TaskBoard = () => {
   const { user, logOut } = useContext(AuthContext);
   const [tasks, setTasks] = useState([]);
-  const [title, setTitle] = useState(""); // New state for form input
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const navigate = useNavigate();
 
-  // get all tasks added by user
+  // Fetch tasks for the logged-in user
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -27,7 +27,7 @@ const TaskBoard = () => {
       });
   }, [user?.uid]);
 
-  // add a new task
+  // Add a new task
   const handleAddTask = async (e) => {
     e.preventDefault();
     if (!title.trim()) return alert("Task title is required!");
@@ -52,48 +52,96 @@ const TaskBoard = () => {
     }
   };
 
+  // Handle drag and drop
   const handleDragEnd = async (result) => {
-    const { destination, source } = result;
+    const { source, destination } = result;
 
-    // If the item is dropped outside a valid droppable area, do nothing
-    if (!destination) return;
-
-    // If the item was dropped in the same place (no change), do nothing
     if (
-      destination.index === source.index &&
-      destination.droppableId === source.droppableId
-    )
+      !destination ||
+      (source.index === destination.index &&
+        source.droppableId === destination.droppableId)
+    ) {
       return;
+    }
 
-    // Reorder tasks
+    // Clone the tasks array to prevent state mutation
     const updatedTasks = [...tasks];
-    // Remove the task from its original position
-    const [movedTask] = updatedTasks.splice(source.index, 1); 
-    // Change the category to the new one
-    movedTask.category = destination.droppableId; 
-    // Insert the task in the new position
-    updatedTasks.splice(destination.index, 0, movedTask); 
 
-    // Update tasks state
-    setTasks(updatedTasks);
+    // Group tasks by category
+    const groupedTasks = {
+      "To-Do": updatedTasks.filter((task) => task.category === "To-Do"),
+      "In Progress": updatedTasks.filter(
+        (task) => task.category === "In Progress"
+      ),
+      Done: updatedTasks.filter((task) => task.category === "Done"),
+    };
 
-    // update the new order and category in the backend
+    // Get source and destination task lists
+    const sourceTasks = groupedTasks[source.droppableId];
+    const destinationTasks = groupedTasks[destination.droppableId];
+
+    // Remove the dragged task from the source category
+    const [movedTask] = sourceTasks.splice(source.index, 1);
+
+    // Ensure movedTask is not undefined
+    if (!movedTask) {
+      console.error("Error: Moved task is undefined!");
+      return;
+    }
+
+    // Update the task's category
+    movedTask.category = destination.droppableId;
+
+    // Insert the task into the new category at the new position
+    destinationTasks.splice(destination.index, 0, movedTask);
+
+    // Recalculate positions for all tasks
+    const reorderedTasks = [
+      ...groupedTasks["To-Do"].map((task, index) => ({
+        ...task,
+        position: index,
+      })),
+      ...groupedTasks["In Progress"].map((task, index) => ({
+        ...task,
+        position: index,
+      })),
+      ...groupedTasks["Done"].map((task, index) => ({
+        ...task,
+        position: index,
+      })),
+    ];
+
+    // Update state with reordered tasks
+    setTasks(reorderedTasks);
+
+    // console logs for debugging
+    // console.log("Source Tasks after removal:", sourceTasks);
+    // console.log("Destination Tasks after insertion:", destinationTasks);
+    // console.log("Final Task List:", reorderedTasks);
+
+    // Send updated order and category to the backend
     try {
       await axios.put(
-        `${import.meta.env.VITE_SERVER}/api/tasks/${movedTask._id}`,
-        movedTask
+        `${import.meta.env.VITE_SERVER}/api/tasks/reorder`,
+        reorderedTasks.map(({ _id, category, position }) => ({
+          _id,
+          category,
+          position,
+        }))
       );
     } catch (error) {
-      console.error("Error updating task:", error);
+      console.error("Error updating task order:", error);
     }
   };
 
+  // Delete a task
   const handleDelete = (task) => {
     axios
       .delete(`${import.meta.env.VITE_SERVER}/api/tasks/${task._id}`)
       .then(() => setTasks(tasks.filter((t) => t._id !== task._id)));
   };
 
+  // Logout function
   const handleLogout = (e) => {
     e.preventDefault();
     logOut().then(() => {
@@ -141,11 +189,16 @@ const TaskBoard = () => {
         <section className="flex gap-2 sm:gap-4 flex-wrap justify-center">
           {["To-Do", "In Progress", "Done"].map((category) => (
             <Droppable droppableId={category} key={category}>
-              {(provided) => (
+              {(provided, snapshot) => (
                 <div
-                  ref={provided.innerRef}
+                  ref={(el) => {
+                    provided.innerRef(el);
+                    if (el) el.style.minHeight = "50px";
+                  }}
                   {...provided.droppableProps}
-                  className="flex-1 p-2 sm:p-4 bg-gray-100 rounded"
+                  className={`flex-1 p-2 sm:p-4 bg-gray-100 rounded ${
+                    snapshot.isDraggingOver ? "bg-blue-100" : ""
+                  }`}
                 >
                   <h2 className="sm:text-xl font-bold border-b sm:pb-2 sm:mb-4">
                     {category}
@@ -155,7 +208,7 @@ const TaskBoard = () => {
                     .map((task, index) => (
                       <Draggable
                         key={task._id}
-                        draggableId={task._id}
+                        draggableId={String(task._id)}
                         index={index}
                       >
                         {(provided) => (
