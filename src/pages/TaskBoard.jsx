@@ -191,13 +191,10 @@ const TaskBoard = () => {
             <Droppable droppableId={category} key={category}>
               {(provided, snapshot) => (
                 <div
-                  ref={(el) => {
-                    provided.innerRef(el);
-                    if (el) el.style.minHeight = "50px";
-                  }}
+                  ref={provided.innerRef}
                   {...provided.droppableProps}
-                  className={`flex-1 p-2 sm:p-4 bg-gray-100 rounded ${
-                    snapshot.isDraggingOver ? "bg-blue-100" : ""
+                  className={`flex-1 p-2 sm:p-4 rounded ${
+                    snapshot.isDraggingOver ? "bg-blue-100" : "bg-gray-100"
                   }`}
                 >
                   <h2 className="sm:text-xl font-bold border-b sm:pb-2 sm:mb-4">
