@@ -11,6 +11,7 @@ const TaskBoard = () => {
   const [description, setDescription] = useState("");
   const navigate = useNavigate();
 
+  // get all tasks added by user
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -34,7 +35,7 @@ const TaskBoard = () => {
     const newTask = {
       title,
       description,
-      category: "To-Do", // Default category
+      category: "To-Do",
       userId: user.uid,
     };
 
@@ -43,8 +44,8 @@ const TaskBoard = () => {
         `${import.meta.env.VITE_SERVER}/api/tasks`,
         newTask
       );
-      setTasks([...tasks, res.data]); // Update state with new task
-      setTitle(""); // Clear input fields
+      setTasks([...tasks, res.data]);
+      setTitle("");
       setDescription("");
     } catch (error) {
       console.error("Error adding task:", error);
@@ -64,16 +65,19 @@ const TaskBoard = () => {
     )
       return;
 
-    // Reorder tasks locally
+    // Reorder tasks
     const updatedTasks = [...tasks];
-    const [movedTask] = updatedTasks.splice(source.index, 1); // Remove the task from its original position
-    movedTask.category = destination.droppableId; // Change the category to the new one
-    updatedTasks.splice(destination.index, 0, movedTask); // Insert the task in the new position
+    // Remove the task from its original position
+    const [movedTask] = updatedTasks.splice(source.index, 1); 
+    // Change the category to the new one
+    movedTask.category = destination.droppableId; 
+    // Insert the task in the new position
+    updatedTasks.splice(destination.index, 0, movedTask); 
 
-    // Update tasks state locally
+    // Update tasks state
     setTasks(updatedTasks);
 
-    // Optionally, persist the new order and category in the backend
+    // update the new order and category in the backend
     try {
       await axios.put(
         `${import.meta.env.VITE_SERVER}/api/tasks/${movedTask._id}`,
@@ -92,16 +96,23 @@ const TaskBoard = () => {
 
   const handleLogout = (e) => {
     e.preventDefault();
-    logOut().then(() => {navigate('/')})
-  }
+    logOut().then(() => {
+      navigate("/");
+    });
+  };
 
   return (
     <div className="p-2 sm:p-4 max-w-7xl w-full mx-auto">
       {/* Add a New Task Form */}
       <form onSubmit={handleAddTask} className="mb-4 p-4 bg-gray-100 rounded">
         <div className="flex justify-between flex-wrap gap-2 sm:gap-4 items-center mb-3">
-        <h2 className="text-xl font-bold">Add New Task</h2>
-        <button onClick={handleLogout} className="border border-gray-700 rounded-md px-4 py-2 active:scale-95">Log out</button>
+          <h2 className="text-xl font-bold">Add New Task</h2>
+          <button
+            onClick={handleLogout}
+            className="border border-gray-700 rounded-md px-4 py-2 active:scale-95"
+          >
+            Log out
+          </button>
         </div>
         <input
           type="text"
@@ -136,7 +147,9 @@ const TaskBoard = () => {
                   {...provided.droppableProps}
                   className="flex-1 p-2 sm:p-4 bg-gray-100 rounded"
                 >
-                  <h2 className="sm:text-xl font-bold border-b sm:pb-2 sm:mb-4">{category}</h2>
+                  <h2 className="sm:text-xl font-bold border-b sm:pb-2 sm:mb-4">
+                    {category}
+                  </h2>
                   {tasks
                     .filter((task) => task.category === category)
                     .map((task, index) => (
@@ -152,9 +165,16 @@ const TaskBoard = () => {
                             {...provided.dragHandleProps}
                             className="p-2 my-2 bg-white shadow rounded"
                           >
-                            <h3 className="text-xs sm:text-lg font-semibold text-gray-800">{task.title}</h3>
-                            <p className="text-gray-600 py-2 text-[10px] sm:text-base">{task.description}</p>
-                            <button onClick={() => handleDelete(task)} className="px-4 py-1 bg-red-500 text-white rounded font-semibold text-[8px] mt-1">
+                            <h3 className="text-xs sm:text-lg font-semibold text-gray-800">
+                              {task.title}
+                            </h3>
+                            <p className="text-gray-600 py-2 text-[10px] sm:text-base">
+                              {task.description}
+                            </p>
+                            <button
+                              onClick={() => handleDelete(task)}
+                              className="px-4 py-1 bg-red-500 text-white rounded font-semibold text-[8px] mt-1"
+                            >
                               Delete
                             </button>
                           </div>
