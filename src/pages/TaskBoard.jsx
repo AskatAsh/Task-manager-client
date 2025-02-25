@@ -173,7 +173,7 @@ const TaskBoard = () => {
                             </p>
                             <button
                               onClick={() => handleDelete(task)}
-                              className="px-4 py-1 bg-red-500 text-white rounded font-semibold text-[8px] mt-1"
+                              className="px-4 py-1 bg-red-500 text-white rounded font-semibold text-[8px] mt-1 active:scale-95 active:bg-red-600"
                             >
                               Delete
                             </button>
