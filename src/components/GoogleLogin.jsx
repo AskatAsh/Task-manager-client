@@ -10,8 +10,9 @@ const GoogleLogin = () => {
   const handleLogin = async () => {
     try {
       const result = await googleSignIn();
-      localStorage.setItem("user", JSON.stringify(result.user));
-      navigate("/tasks");
+      if(result.user?.uid){
+        navigate("/tasks");
+      }
     } catch (error) {
       console.error("Login Failed:", error);
     }
