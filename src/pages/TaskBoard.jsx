@@ -18,7 +18,7 @@ const TaskBoard = () => {
     axios
       .get(`${import.meta.env.VITE_SERVER}/api/tasks?userId=${user.uid}`)
       .then((res) => {
-        console.log("Fetched tasks:", res.data);
+        // console.log("Fetched tasks:", res.data);
         setTasks(Array.isArray(res.data) ? res.data : []);
       })
       .catch((err) => {
