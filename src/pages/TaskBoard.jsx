@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from "react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import axios from "axios";
 import { AuthContext } from "../providers/AuthProvider";
 import { useNavigate } from "react-router-dom";
@@ -25,16 +26,15 @@ const TaskBoard = () => {
       });
   }, [user?.uid]);
 
-  // add a new task handler
+  // add a new task
   const handleAddTask = async (e) => {
     e.preventDefault();
     if (!title.trim()) return alert("Task title is required!");
 
-    // new task with To-Do category by default
     const newTask = {
       title,
       description,
-      category: "To-Do",
+      category: "To-Do", // Default category
       userId: user.uid,
     };
 
@@ -43,14 +43,52 @@ const TaskBoard = () => {
         `${import.meta.env.VITE_SERVER}/api/tasks`,
         newTask
       );
-      setTasks([...tasks, res.data]);
-      setTitle("");
+      setTasks([...tasks, res.data]); // Update state with new task
+      setTitle(""); // Clear input fields
       setDescription("");
     } catch (error) {
-      alert("Error adding task:", error);
+      console.error("Error adding task:", error);
     }
   };
 
+  const handleDragEnd = async (result) => {
+    const { destination, source } = result;
+
+    // If the item is dropped outside a valid droppable area, do nothing
+    if (!destination) return;
+
+    // If the item was dropped in the same place (no change), do nothing
+    if (
+      destination.index === source.index &&
+      destination.droppableId === source.droppableId
+    )
+      return;
+
+    // Reorder tasks locally
+    const updatedTasks = [...tasks];
+    const [movedTask] = updatedTasks.splice(source.index, 1); // Remove the task from its original position
+    movedTask.category = destination.droppableId; // Change the category to the new one
+    updatedTasks.splice(destination.index, 0, movedTask); // Insert the task in the new position
+
+    // Update tasks state locally
+    setTasks(updatedTasks);
+
+    // Optionally, persist the new order and category in the backend
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_SERVER}/api/tasks/${movedTask._id}`,
+        movedTask
+      );
+    } catch (error) {
+      console.error("Error updating task:", error);
+    }
+  };
+
+  const handleDelete = (task) => {
+    axios
+      .delete(`${import.meta.env.VITE_SERVER}/api/tasks/${task._id}`)
+      .then(() => setTasks(tasks.filter((t) => t._id !== task._id)));
+  };
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -86,6 +124,50 @@ const TaskBoard = () => {
           Add Task
         </button>
       </form>
+
+      {/* Drag and Drop Task Board section */}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <section className="flex gap-2 sm:gap-4 flex-wrap justify-center">
+          {["To-Do", "In Progress", "Done"].map((category) => (
+            <Droppable droppableId={category} key={category}>
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="flex-1 p-2 sm:p-4 bg-gray-100 rounded"
+                >
+                  <h2 className="sm:text-xl font-bold border-b sm:pb-2 sm:mb-4">{category}</h2>
+                  {tasks
+                    .filter((task) => task.category === category)
+                    .map((task, index) => (
+                      <Draggable
+                        key={task._id}
+                        draggableId={task._id}
+                        index={index}
+                      >
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className="p-2 my-2 bg-white shadow rounded"
+                          >
+                            <h3 className="text-xs sm:text-lg font-semibold text-gray-800">{task.title}</h3>
+                            <p className="text-gray-600 py-2 text-[10px] sm:text-base">{task.description}</p>
+                            <button onClick={() => handleDelete(task)} className="px-4 py-1 bg-red-500 text-white rounded font-semibold text-[8px] mt-1">
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          ))}
+        </section>
+      </DragDropContext>
     </div>
   );
 };
